@@ -19,7 +19,7 @@
  *
  * @package    enrol
  * @subpackage restxml
- * @copyright  2011-2013 Paul Vaughan, South Devon College
+ * @copyright  2011-2014 Paul Vaughan, South Devon College
  * @author     Paul Vaughan - based on code by Petr Skoda and others
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

@@ -21,7 +21,7 @@
  *
  * @package    enrol
  * @subpackage restxml
- * @copyright  2011-2013 Paul Vaughan, South Devon College
+ * @copyright  2011-2014 Paul Vaughan, South Devon College
  * @author     Paul Vaughan - based on code by Petr Skoda and others
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -198,7 +198,7 @@ class enrol_restxml_plugin extends enrol_plugin {
 
         if (empty($instance->name)) {
             if (!empty($instance->roleid)) {
-                $role = ' (' . role_get_name($role, get_context_instance(CONTEXT_COURSE, $instance->courseid)) . ')';
+                $role = ' (' . role_get_name($role, context_course::instance($instance->courseid)) . ')';
             } else {
                 $role = '';
             }
@@ -402,7 +402,7 @@ class enrol_restxml_plugin extends enrol_plugin {
                         foreach ($courseobjects as $courseobj) {
 
                             // Get the course context for this course.
-                            $context = get_context_instance(CONTEXT_COURSE, $courseobj->id);
+                            $context = context_course::instance($courseobj->id);
 
                             // Get the enrolment plugin instance.
                             $enrolid = $DB->get_record('enrol', array(

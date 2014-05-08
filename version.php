@@ -19,16 +19,16 @@
  *
  * @package    enrol
  * @subpackage restxml
- * @copyright  2011-2013 Paul Vaughan, South Devon College
+ * @copyright  2011-2014 Paul Vaughan, South Devon College
  * @author     Paul Vaughan - based on code by Petr Skoda and others
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version        = 2013112000;       // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version        = 2014050800;       // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires       = 2010112400;       // Moodle 2.0+.
 $plugin->component      = 'enrol_restxml';  // Full name of the plugin (used for diagnostics).
 $plugin->cron           = 0;                // Period for cron to check this plugin (secs).
 $plugin->maturity       = MATURITY_STABLE;
-$plugin->release        = '2.1';
+$plugin->release        = '2.1.1';
