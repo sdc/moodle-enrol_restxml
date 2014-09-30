@@ -35,14 +35,6 @@ if ($ADMIN->fulltree) {
         $settings->add(new admin_setting_heading('enrol_restxml_noextension', '', get_string('phpldap_nocurlextension', 'enrol_restxml')));
     } else {
 
-        // Shib-login.
-        $settings->add(new admin_setting_configtext('enrol_restxml_shiblogin', get_string('shiblogin', 'enrol_restxml'),
-            get_string('shiblogin_desc', 'enrol_restxml'), ''));
-
-        // Shib-password.
-        $settings->add(new admin_setting_configpasswordunmask('enrol_restxml_shibpassword', get_string('shibpassword', 'enrol_restxml'),
-            get_string('shibpassword_desc', 'enrol_restxml'), ''));
-
         // Default url.
         $settings->add(new admin_setting_configtext('enrol_restxml_url', get_string('url', 'enrol_restxml'),
             get_string('url_desc', 'enrol_restxml'), ''));

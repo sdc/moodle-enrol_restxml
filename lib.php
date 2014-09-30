@@ -28,150 +28,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/**
- * Mark Lin
- * Curl a shib protected site
- *
- * Found on the web here:
- * http://www.codesphp.com/php-category/curl-a-shib-protected-site.html
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-class ShibCurl {
-    private static $ch, $username, $password;
-    private static $shib_cookie = "shib-cookie";
-    private static $debug = false;
-
-    // Initialize curl handler with SSO username and pass
-    function __construct($username,$password) {
-        self::$ch = curl_init();
-        // Sets up options for the curl handler
-        curl_setopt(self::$ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt(self::$ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt(self::$ch, CURLOPT_COOKIEFILE, self::$shib_cookie);
-        curl_setopt(self::$ch, CURLOPT_COOKIEJAR, self::$shib_cookie);
-        curl_setopt(self::$ch, CURLOPT_COOKIESESSION, 1);
-        curl_setopt(self::$ch, CURLOPT_COOKIE, session_name() . '=' . session_id());
-        curl_setopt(self::$ch, CURLOPT_FOLLOWLOCATION, 1);
-        if ( empty($username) || empty($password)  ) {
-            throw new Exception("Empty username or password");
-        } else {
-            self::$username = $username;
-            self::$password = $password;
-        }
-    }
-
-    // At destruct time, close the curl handler and remove cookie
-    function __destruct() {
-        curl_close(self::$ch);
-            if ( file_exists("./".self::$shib_cookie) ) {
-            unlink("./".self::$shib_cookie);
-        }
-    }
-
-    function setDebug($v) {
-        self::$debug = $v;
-    }
-
-    // To curl a given url
-    public function curl($url, $formvars = array()) {
-
-        curl_setopt(self::$ch, CURLOPT_URL, $url);
-        // Post the form
-        curl_setopt(self::$ch, CURLOPT_POSTFIELDS, $formvars);
-
-        $out = curl_exec(self::$ch);
-        $info = curl_getinfo(self::$ch);
-
-        // Check if we're forward to idp, if not we just need to submit the form to continue
-        if ( preg_match('@/idp/Authn@',$info['url']) ) {
-            if ( self::$debug ) {
-                echo "we're in IDPn";
-            }
-            $url_auth = $info['url'];
-
-            // Set curl to hit idp next
-            curl_setopt(self::$ch, CURLOPT_URL, $url_auth);
-
-            // Set this request to be post
-            curl_setopt(self::$ch, CURLOPT_POST, 1);
-
-            // Our lovely headless account
-            $forms = "j_username=".urlencode(self::$username)."&j_password=".urlencode(self::$password);
-
-            // Add it to request
-            curl_setopt(self::$ch, CURLOPT_POSTFIELDS, $forms);
-
-            // Get the output
-            $out = curl_exec(self::$ch);
-
-            if ( self::$debug ) {
-                print $out;
-            }
-
-            // If we returned to auth form, that means unable to authenticate
-            if ( preg_match('@Authentication Failed@', $out) ) {
-                throw new Exception('Unable to authenticate');
-            }
-        }
-
-        // Now we should be properly authenticated.  IDP send us back to SP's shib site.
-        // Normally, javascript will kick in and submit the page automatically, but this is curl
-        // so we have to do the submit ourself.
-        // Get the SP's SAML url from the output
-        if ( preg_match('@form action="([^"]+)"@', $out, $matches) ) {
-
-            if ( self::$debug ) {
-                echo "we're in sp SAMLn";
-            }
-
-            $url_sp = $matches[1];
-
-            // Get the fields, match all input type=hidden
-            preg_match_all('@input type="hidden" name="([^"]+)" value="([^"]+)"@i', $out, $matches);
-            // Get rid of first element which just contains the whole matched string.
-            unset($matches[0]);
-
-            // $matches now contains fields needed SP to validate session, we'll build a POST form around it.
-            $forms = array();
-            for ( $i = 0; $i < count($matches[1]); $i++ ) {
-                $forms[] = $matches[1][$i] .'='. urlencode($matches[2][$i]);
-            }
-
-            // Again, setup the path and get the form in
-            curl_setopt(self::$ch, CURLOPT_URL, $url_sp);
-            curl_setopt(self::$ch, CURLOPT_POSTFIELDS, join('&',$forms));
-
-            // wheeee, finally we get the page.
-
-            $out = curl_exec(self::$ch);
-            if ( self::$debug ) {
-                print $out;
-            }
-
-            // Now we are properly authenticated and got a session with this SP, do last curl to send the form
-
-            // This next line stops everything working properly, so we're not going to use it.
-            //curl_setopt(self::$ch, CURLOPT_POSTFIELDS, $formvars);
-
-            $out = curl_exec(self::$ch);
-        }
-
-        // return the output
-        return $out;
-    }
-} // End ShibCurl function.
 
 
 /**
@@ -282,14 +138,6 @@ class enrol_restxml_plugin extends enrol_plugin {
             }
         }
 
-        // Checking for the username, password and enrolment URL.
-        if (empty($CFG->enrol_restxml_url) || empty($CFG->enrol_restxml_shiblogin) || empty($CFG->enrol_restxml_shibpassword)) {
-            if ($this->fulllogging) {
-                error_log($this->errorlogtag . '  Missing important $CFG parameters: serious error about here.');
-                return false;
-            }
-        }
-
         // Get the user's id number.
         if (!property_exists($user, 'idnumber')) {
             if ($this->fulllogging) {
@@ -331,21 +179,22 @@ class enrol_restxml_plugin extends enrol_plugin {
             error_log($this->errorlogtag . '  EBS username is "'.$uname.'"');
         }
 
-        $url = preg_replace('/USERNAME/', $uname, $CFG->enrol_restxml_url);
+        $url = preg_replace('/USERNAME/', $uname, $CFG->enrol_restxml_url ) . '?token=' . $CFG->trackerhash;
 
         // Some epic logging, prob not needed unless extreme debugging is taking place.
         if ($this->epiclogging) {
             error_log($this->errorlogtag . ' <'.$url);
         }
 
-        // Loading XML from a file: testing purposes.
-        // $dom = new DOMDocument();
-        // $dom->load('file.xml');
+        if ( !$leap_xml = file_get_contents($url) ) {
+            error_log($this->errorlogtag . '  Couldn\'t get the XML from Leap.');
+        }
 
-        // Loading XML from Leap using ShibCurl.
-        $shibcurl = new ShibCurl($CFG->enrol_restxml_shiblogin, $CFG->enrol_restxml_shibpassword);
+        // Loading XML 'properly'.
         $dom = new DOMDocument();
-        $dom->loadXML($shibcurl->curl($url));
+        //$dom->loadXML($url);
+        $dom->loadXML($leap_xml);
+
 
         // Add this to the received XML so that courses labeled appropriately should enrol everyone.
         $allstudentsxml = "  <!-- BEGIN adding ALLSTUDENTS xml -->
